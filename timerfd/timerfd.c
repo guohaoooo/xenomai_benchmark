@@ -68,6 +68,7 @@ int main(int argc, char *const *argv)
                         (double)sum / (samples * 1000),
                         (double)max / 1000);
 
+        sleep(1);
     }
 
     return 0;
