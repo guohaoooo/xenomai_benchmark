@@ -20,7 +20,20 @@ static inline long long diff_ts(struct timespec *left, struct timespec *right)
 
 int main(int argc, char *const *argv)
 {
-    int err, priority = 99, cpu = 0;
+    int err, policy;
+    struct sched_param param, old_param;
+
+    err = pthread_getschedparam(pthread_self(), &policy, &old_param);
+    if (err)
+        error(1, err, "pthread_sched_getparam()");
+
+    if ((policy != SCHED_FIFO) && (policy != SCHED_RR)) {
+        param = old_param;
+        param.sched_priority = 99;
+        err = pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
+        if (err)
+            error(1, err, "setscheduler()");
+    }
 
 
 #ifdef CONFIG_XENO_COBALT

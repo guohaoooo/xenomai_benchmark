@@ -20,26 +20,26 @@ static inline long long diff_ts(struct timespec *left, struct timespec *right)
 
 int main(int argc, char *const *argv)
 {
-    int err;
-    int policy = sched_getscheduler(0);
+    int err, policy;
     struct sched_param param, old_param;
+
+    err = pthread_getschedparam(pthread_self(), &policy, &old_param);
+    if (err)
+        error(1, err, "pthread_sched_getparam()");
+
+    if ((policy != SCHED_FIFO) && (policy != SCHED_RR)) {
+        param = old_param;
+        param.sched_priority = 99;
+        err = pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
+        if (err)
+            error(1, err, "setscheduler()");
+    }
 
 #ifdef CONFIG_XENO_COBALT
     err = pthread_setmode_np(0, PTHREAD_WARNSW, NULL);
     if (err)
         error(1, err, "pthread_setmode_np()");
 #endif
-
-    if ((policy != SCHED_FIFO) && (policy != SCHED_RR)) {
-        err = sched_getparam(0, &old_param);
-        if (err)
-            error(1, err, "sched_getparam()");
-        param = old_param;
-        param.sched_priority = 1;
-        err = sched_setscheduler(0, SCHED_FIFO, &param);
-        if (err)
-            error(1, err, "sched_setscheduler()");
-    }
 
     printf("== Real Time Test \n"
            "== Test name: getpid \n"
@@ -56,7 +56,7 @@ int main(int argc, char *const *argv)
         for (count = sum = 0; count < samples; count++) {
 
             clock_gettime(CLOCK_MONOTONIC, &start);
-            pid = getpid();
+//            pid = id();
             clock_gettime(CLOCK_MONOTONIC, &end);
     
             dt = (int32_t)diff_ts(&end, &start);
