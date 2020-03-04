@@ -5,7 +5,7 @@ LDFLAGS := $(shell $(XENO_CONFIG) --posix --ldflags)
 LDFLAGS_EX := -Wl,-rpath=/usr/xenomai/lib
 CC := $(shell $(XENO_CONFIG) --cc)
 
-EXCUTABLE := getpid
+EXCUTABLE := get_current_slow
 
 all: $(EXCUTABLE)
 
