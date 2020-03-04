@@ -7,13 +7,14 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <signal.h>
+#include <boilerplate/setup.h>
 
 
 #define ONE_BILLION  1000000000
 #define TEN_MILLIONS 10000000
-#define SAMPLES_NUM  100000
+#define SAMPLES_NUM  1000000
 
-char test_name[32] = "get_current_slow";
+char test_name[32] = "get_program_name";
 
 static inline long long diff_ts(struct timespec *left, struct timespec *right)
 {
@@ -59,8 +60,6 @@ static void sigdebug(int sig, siginfo_t *si, void *context)
 	kill(getpid(), sig);
 }
 
-typedef __u32 xnhandle_t;
-xnhandle_t cobalt_get_current_slow(void);
 int main(int argc, char *const *argv)
 {
     int err, cpu = 0, policy;
@@ -68,7 +67,6 @@ int main(int argc, char *const *argv)
     sigset_t mask;
     struct sigaction sa __attribute__((unused));
     struct sched_param param, old_param;
-    xnhandle_t handle;
 
     // block signal 
     sigemptyset(&mask);
@@ -119,12 +117,11 @@ int main(int argc, char *const *argv)
         int64_t sum;
         int count, samples = SAMPLES_NUM;
         struct timespec start, end;
-        pid_t pid;
 
         for (count = sum = 0; count < samples; count++) {
 
             clock_gettime(CLOCK_MONOTONIC, &start);
-            handle = cobalt_get_current_slow();
+            get_program_name();
             clock_gettime(CLOCK_MONOTONIC, &end);
     
             dt = (int32_t)diff_ts(&end, &start);
