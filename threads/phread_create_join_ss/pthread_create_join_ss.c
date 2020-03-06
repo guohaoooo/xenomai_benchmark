@@ -12,7 +12,7 @@
 #define TEN_MILLIONS 10000000
 #define SAMPLES_NUM  100000
 
-char test_name[32] = "pthread_create_join_nl";
+char test_name[32] = "pthread_create_join_ss";
 
 static inline long long diff_ts(struct timespec *left, struct timespec *right)
 {
@@ -58,12 +58,13 @@ static void sigdebug(int sig, siginfo_t *si, void *context)
 	kill(getpid(), sig);
 }
 
-char userstack[PTHREAD_STACK_MIN * 2];
+char userstack[PTHREAD_STACK_MIN];
 
 static void setup_sched_parameters(pthread_attr_t *attr, int prio, cpu_set_t * pcpus)
 {
 	struct sched_param p;
 	int ret;
+        void *mystack;
 	
 	ret = pthread_attr_init(attr);
 	if (ret)
@@ -85,18 +86,19 @@ static void setup_sched_parameters(pthread_attr_t *attr, int prio, cpu_set_t * p
         ret = pthread_attr_setaffinity_np(attr, sizeof(*pcpus), pcpus);
         if (ret)
             error(1, ret, "pthread_attr_setaffinity_np()");
-#if 0
+
         ret = pthread_attr_setstack(attr, userstack, PTHREAD_STACK_MIN);
         if (ret)
-            error(1, ret, "pthread_attr_setstack())");
-#endif    
-        ret = pthread_attr_setstacksize(attr, PTHREAD_STACK_MIN*2);
-        if (ret)
-            error(1, ret, "pthread_attr_setstacks())");
+            error(1, ret, "pthread_attr_setstack()");
 
-        ret = pthread_attr_setstackaddr(attr, userstack);
+#if 0
+        ret = pthread_attr_setstackaddr(attr, mystack);
         if (ret)
             error(1, ret, "pthread_attr_setstacka())");
+        ret = pthread_attr_setstacksize(attr, PTHREAD_STACK_MIN);
+        if (ret)
+            error(1, ret, "pthread_attr_setstacks())");
+#endif
 
 }
 
