@@ -10,9 +10,9 @@
 
 #define ONE_BILLION  1000000000
 #define TEN_MILLIONS 10000000
-#define SAMPLES_NUM  100000
+#define SAMPLES_NUM  1000000
 
-char test_name[32] = "sched_yield_inter_process";
+char test_name[32] = "signal";
 
 static inline long long diff_ts(struct timespec *left, struct timespec *right)
 {
@@ -21,79 +21,85 @@ static inline long long diff_ts(struct timespec *left, struct timespec *right)
 }
 
 static const char *reason_str[] = {
-	[SIGDEBUG_UNDEFINED] = "received SIGDEBUG for unknown reason",
-	[SIGDEBUG_MIGRATE_SIGNAL] = "received signal",
-	[SIGDEBUG_MIGRATE_SYSCALL] = "invoked syscall",
-	[SIGDEBUG_MIGRATE_FAULT] = "triggered fault",
-	[SIGDEBUG_MIGRATE_PRIOINV] = "affected by priority inversion",
-	[SIGDEBUG_NOMLOCK] = "process memory not locked",
-	[SIGDEBUG_WATCHDOG] = "watchdog triggered (period too short?)",
-	[SIGDEBUG_LOCK_BREAK] = "scheduler lock break",
+    [SIGDEBUG_UNDEFINED] = "received SIGDEBUG for unknown reason",
+    [SIGDEBUG_MIGRATE_SIGNAL] = "received signal",
+    [SIGDEBUG_MIGRATE_SYSCALL] = "invoked syscall",
+    [SIGDEBUG_MIGRATE_FAULT] = "triggered fault",
+    [SIGDEBUG_MIGRATE_PRIOINV] = "affected by priority inversion",
+    [SIGDEBUG_NOMLOCK] = "process memory not locked",
+    [SIGDEBUG_WATCHDOG] = "watchdog triggered (period too short?)",
+    [SIGDEBUG_LOCK_BREAK] = "scheduler lock break",
 };
 
 static void sigdebug(int sig, siginfo_t *si, void *context)
 {
-	const char fmt[] = "%s, aborting.\n"
-		"(enabling CONFIG_XENO_OPT_DEBUG_TRACE_RELAX may help)\n";
-	unsigned int reason = sigdebug_reason(si);
-	int n __attribute__ ((unused));
-	static char buffer[256];
-
-	if (reason > SIGDEBUG_WATCHDOG)
-		reason = SIGDEBUG_UNDEFINED;
-
-	switch(reason) {
-	case SIGDEBUG_UNDEFINED:
-	case SIGDEBUG_NOMLOCK:
-	case SIGDEBUG_WATCHDOG:
-		n = snprintf(buffer, sizeof(buffer), "latency: %s\n",
-			     reason_str[reason]);
-		n = write(STDERR_FILENO, buffer, n);
-		exit(EXIT_FAILURE);
-	}
-
-	n = snprintf(buffer, sizeof(buffer), fmt, reason_str[reason]);
-	n = write(STDERR_FILENO, buffer, n);
-	signal(sig, SIG_DFL);
-	kill(getpid(), sig);
+    const char fmt[] = "%s, aborting.\n"
+    	"(enabling CONFIG_XENO_OPT_DEBUG_TRACE_RELAX may help)\n";
+    unsigned int reason = sigdebug_reason(si);
+    int n __attribute__ ((unused));
+    static char buffer[256];
+    
+    if (reason > SIGDEBUG_WATCHDOG)
+    	reason = SIGDEBUG_UNDEFINED;
+    
+    switch(reason) {
+    case SIGDEBUG_UNDEFINED:
+    case SIGDEBUG_NOMLOCK:
+    case SIGDEBUG_WATCHDOG:
+    	n = snprintf(buffer, sizeof(buffer), "latency: %s\n",
+    		     reason_str[reason]);
+    	n = write(STDERR_FILENO, buffer, n);
+    	exit(EXIT_FAILURE);
+    }
+    
+    n = snprintf(buffer, sizeof(buffer), fmt, reason_str[reason]);
+    n = write(STDERR_FILENO, buffer, n);
+    signal(sig, SIG_DFL);
+    kill(getpid(), sig);
 }
 
 static void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu)
 {
-	int ret;
-        cpu_set_t cpus;
-	struct sched_param p;
-	
-	ret = pthread_attr_init(attr);
-	if (ret)
-		error(1, ret, "pthread_attr_init()");
-
-	ret = pthread_attr_setinheritsched(attr, PTHREAD_EXPLICIT_SCHED);
-	if (ret)
-		error(1, ret, "pthread_attr_setinheritsched()");
-
-	ret = pthread_attr_setschedpolicy(attr, prio ? SCHED_FIFO : SCHED_OTHER);
-	if (ret)
-		error(1, ret, "pthread_attr_setschedpolicy()");
-
-	p.sched_priority = prio;
-	ret = pthread_attr_setschedparam(attr, &p);
-	if (ret)
-		error(1, ret, "pthread_attr_setschedparam()");
-
-        CPU_ZERO(&cpus);
-        CPU_SET(cpu, &cpus);
-        ret = pthread_attr_setaffinity_np(attr, sizeof(cpus), &cpus);
-        if (ret)
-            error(1, ret, "pthread_attr_setaffinity_np()");
-
+    int ret;
+    cpu_set_t cpus;
+    struct sched_param p;
+    
+    ret = pthread_attr_init(attr);
+    if (ret)
+    	error(1, ret, "pthread_attr_init()");
+    
+    ret = pthread_attr_setinheritsched(attr, PTHREAD_EXPLICIT_SCHED);
+    if (ret)
+    	error(1, ret, "pthread_attr_setinheritsched()");
+    
+    ret = pthread_attr_setschedpolicy(attr, prio ? SCHED_FIFO : SCHED_OTHER);
+    if (ret)
+    	error(1, ret, "pthread_attr_setschedpolicy()");
+    
+    p.sched_priority = prio;
+    ret = pthread_attr_setschedparam(attr, &p);
+    if (ret)
+    	error(1, ret, "pthread_attr_setschedparam()");
+    
+    CPU_ZERO(&cpus);
+    CPU_SET(cpu, &cpus);
+    ret = pthread_attr_setaffinity_np(attr, sizeof(cpus), &cpus);
+    if (ret)
+        error(1, ret, "pthread_attr_setaffinity_np()");
 }
+
+static void emptyhandler(int sig, siginfo_t *si, void *context) {}
 
 void *function(void *arg) 
 {
-    int i, loop = 20;
+    struct sigaction sa __attribute__((unused));
 
-    for (i = 0; i < loop; i++) {
+    sigemptyset(&sa.sa_mask);
+    sa.sa_sigaction = emptyhandler;
+    sa.sa_flags = SA_SIGINFO;
+    sigaction(SIGUSR1, &sa, NULL);
+
+    for (;;) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
@@ -104,7 +110,7 @@ void *function(void *arg)
 
             clock_gettime(CLOCK_MONOTONIC, &start);
 
-            sched_yield();
+            pthread_kill(pthread_self(), SIGUSR1);
 
             clock_gettime(CLOCK_MONOTONIC, &end);
     
@@ -125,6 +131,7 @@ void *function(void *arg)
                         (double)sum / (samples * 1000),
                         (double)max / 1000);
 
+        sleep(1);
     }
 
     return (arg);
@@ -204,7 +211,6 @@ int main(int argc, char *const *argv)
     pthread_attr_destroy(&tattr);
 
     pthread_join(task, NULL);
-
 
     return 0;
 }

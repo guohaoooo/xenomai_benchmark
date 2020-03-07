@@ -87,9 +87,6 @@ static void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu)
     if (ret)
         error(1, ret, "pthread_attr_setaffinity_np()");
     
-    ret = pthread_attr_setstacksize(attr, PTHREAD_STACK_MIN);
-    if (ret)
-        error(1, ret, "pthread_attr_setstacksize()");
 }
 
 
