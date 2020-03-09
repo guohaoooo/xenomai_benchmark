@@ -12,7 +12,7 @@
 
 #define ONE_BILLION  1000000000
 #define TEN_MILLIONS 10000000
-#define SAMPLES_NUM  1000000
+#define SAMPLES_NUM  100000
 
 char test_name[32] = "timer_create_delete";
 
@@ -67,6 +67,7 @@ int main(int argc, char *const *argv)
     sigset_t mask;
     struct sigaction sa __attribute__((unused));
     struct sched_param param, old_param;
+    int dog = 0;
 
     // block signal 
     sigemptyset(&mask);
@@ -152,7 +153,9 @@ int main(int argc, char *const *argv)
                         (double)sum / (samples * 1000),
                         (double)max / 1000);
 
-        sleep(1);
+        dog++;
+        if (dog % 10 == 0)
+            sleep(1);
     }
 
     return 0;
