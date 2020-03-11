@@ -5,9 +5,13 @@ LDFLAGS := $(shell $(XENO_CONFIG) --posix --ldflags)
 LDFLAGS_EX := -Wl,-rpath=/usr/xenomai/lib
 CC := $(shell $(XENO_CONFIG) --cc)
 
-EXCUTABLE := in_kernel_mutex 
+EXCUTABLE := pthread_create_join_ss \
+	     pthread_create_join
 
 all: $(EXCUTABLE)
 
 %: %.c
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS) $(LDFLAGS_EX)
+
+clean:
+	rm ${EXCUTABLE}

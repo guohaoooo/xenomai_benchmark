@@ -5,9 +5,14 @@ LDFLAGS := $(shell $(XENO_CONFIG) --posix --ldflags)
 LDFLAGS_EX := -Wl,-rpath=/usr/xenomai/lib
 CC := $(shell $(XENO_CONFIG) --cc)
 
-EXCUTABLE := get_pid
+EXCUTABLE := signal \
+	     signal_inter_process \
+	     signal_inter_thread 
 
 all: $(EXCUTABLE)
 
 %: %.c
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS) $(LDFLAGS_EX)
+
+clean:
+	rm ${EXCUTABLE}

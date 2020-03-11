@@ -5,9 +5,14 @@ LDFLAGS := $(shell $(XENO_CONFIG) --posix --ldflags)
 LDFLAGS_EX := -Wl,-rpath=/usr/xenomai/lib
 CC := $(shell $(XENO_CONFIG) --cc)
 
-EXCUTABLE := yield_inter_process
+EXCUTABLE := yield \
+	     yield_inter_thread \
+	     yield_inter_process
 
 all: $(EXCUTABLE)
 
 %: %.c
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS) $(LDFLAGS_EX)
+
+clean:
+	rm ${EXCUTABLE}

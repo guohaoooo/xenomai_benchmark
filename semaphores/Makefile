@@ -17,8 +17,4 @@ all: $(EXCUTABLE)
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS) $(LDFLAGS_EX)
 
 clean: 
-	rm unavailable_sem \
-	   named_unavailable_sem \
-	   sem_post_wait \
-	   sem_post_wait_inter_process \
-	   sem_post_wait_inter_thread
+	rm ${EXCUTABLE}
