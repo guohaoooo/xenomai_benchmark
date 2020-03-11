@@ -13,7 +13,7 @@
 #define TEN_MILLIONS 10000000
 #define SAMPLES_NUM  1000000
 
-char test_name[32] = "unavailable_sem_inter_thread";
+char test_name[32] = "unavailable_sem";
 
 static inline long long diff_ts(struct timespec *left, struct timespec *right)
 {
@@ -109,12 +109,7 @@ void *function(void *arg)
         for (count = sum = 0; count < samples; count++) {
 
             clock_gettime(CLOCK_MONOTONIC, &start);
-            err = sem_post(&sem);
-            if (err)
-                error(1, err, "sem_post()");
-            err = sem_wait(&sem);
-            if (err)
-                error(1, err, "sem_wait()");
+            err = sem_trywait(&sem);
             clock_gettime(CLOCK_MONOTONIC, &end);
     
             dt = (int32_t)diff_ts(&end, &start);

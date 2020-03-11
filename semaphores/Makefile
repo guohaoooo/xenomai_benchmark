@@ -5,9 +5,20 @@ LDFLAGS := $(shell $(XENO_CONFIG) --posix --ldflags)
 LDFLAGS_EX := -Wl,-rpath=/usr/xenomai/lib
 CC := $(shell $(XENO_CONFIG) --cc)
 
-EXCUTABLE := unavailable_sem
+EXCUTABLE := unavailable_sem \
+	     named_unavailable_sem \
+	     sem_post_wait \
+	     sem_post_wait_inter_process \
+	     sem_post_wait_inter_thread 
 
 all: $(EXCUTABLE)
 
 %: %.c
 	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS) $(LDFLAGS_EX)
+
+clean: 
+	rm unavailable_sem \
+	   named_unavailable_sem \
+	   sem_post_wait \
+	   sem_post_wait_inter_process \
+	   sem_post_wait_inter_thread

@@ -6,15 +6,17 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <signal.h>
-#include <sys/syscall.h>
+#include <semaphore.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 
 #define ONE_BILLION  1000000000
 #define TEN_MILLIONS 10000000
 #define SAMPLES_NUM  100000
 
-char test_name[32] = "signal_inter_process";
-
+char test_name[32] = "unavailable_sem_inter_process";
 
 static inline long long diff_ts(struct timespec *left, struct timespec *right)
 {
@@ -48,7 +50,7 @@ static void sigdebug(int sig, siginfo_t *si, void *context)
     case SIGDEBUG_UNDEFINED:
     case SIGDEBUG_NOMLOCK:
     case SIGDEBUG_WATCHDOG:
-    	n = snprintf(buffer, sizeof(buffer), "signal: %s\n",
+    	n = snprintf(buffer, sizeof(buffer), "latency: %s\n",
     		     reason_str[reason]);
     	n = write(STDERR_FILENO, buffer, n);
     	exit(EXIT_FAILURE);
@@ -90,23 +92,16 @@ static void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu)
         error(1, ret, "pthread_attr_setaffinity_np()");
 }
 
-static void emptyhandler(int sig, siginfo_t *si, void *context) {}
 
-void *function(void *arg) 
+void *function_1(void *arg) 
 {
-    struct sigaction sa __attribute__((unused));
-    sigset_t mask;
-    pid_t pid = syscall(__NR_gettid);
+    int dog = 0, err, fd;
+    sem_t *sem;
 
-    printf("tid:%d \n", pid);
-
-    sigfillset(&sa.sa_mask);
-    sa.sa_sigaction = emptyhandler;
-    sa.sa_flags = SA_SIGINFO;
-    sigaction(SIGUSR1, &sa, NULL);
-    sigfillset(&mask);
-
-    int dog = 0;
+    fd = shm_open("/sem", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+    ftruncate(fd, sizeof(sem_t));
+    sem = mmap(NULL, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    sem_init(sem, !0, 0);
 
     for (;;) {
 
@@ -118,9 +113,9 @@ void *function(void *arg)
         for (count = sum = 0; count < samples; count++) {
 
             clock_gettime(CLOCK_MONOTONIC, &start);
-            
-            sigwaitinfo(&mask, NULL);
-            
+            err = sem_wait(sem);
+            if (err)
+                error(1, err, "sem_wait()");
             clock_gettime(CLOCK_MONOTONIC, &end);
     
             dt = (int32_t)diff_ts(&end, &start);
@@ -134,28 +129,31 @@ void *function(void *arg)
             sum += dt;
         }
 
-        printf("Result|samples:task_1 %11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
+        printf("Result| task1: samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
                         samples,
                         (double)min / 1000,
                         (double)sum / (samples * 1000),
                         (double)max / 1000);
-        
         dog++;
-        if(dog%10 == 0)
+        if (dog%10 == 0)
             sleep(1);
-
     }
 
     return (arg);
 }
 
-void *function_kill(void *arg)
+void *function_2(void *arg) 
 {
-    int dog = 0;
-    pid_t pid = *(pid_t *)arg;
+    int dog = 0, err, fd;
+    sem_t *sem;
+
+    fd = shm_open("/sem", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+    ftruncate(fd, sizeof(sem_t));
+    sem = mmap(NULL, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    sem_init(sem, !0, 0);
 
     for (;;) {
-        
+
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
         int count, samples = SAMPLES_NUM;
@@ -164,9 +162,9 @@ void *function_kill(void *arg)
         for (count = sum = 0; count < samples; count++) {
 
             clock_gettime(CLOCK_MONOTONIC, &start);
-            
-            kill(pid, SIGUSR1);
-
+            err = sem_post(sem);
+            if (err)
+                error(1, err, "sem_post()");
             clock_gettime(CLOCK_MONOTONIC, &end);
     
             dt = (int32_t)diff_ts(&end, &start);
@@ -180,20 +178,17 @@ void *function_kill(void *arg)
             sum += dt;
         }
 
-        printf("Result|samples:task_2 %11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
+        printf("Result| task2: samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
                         samples,
                         (double)min / 1000,
                         (double)sum / (samples * 1000),
                         (double)max / 1000);
-
         dog++;
-        if(dog%10 == 0)
+        if (dog%10 == 0)
             sleep(1);
-
     }
 
     return (arg);
-       
 }
 
 static void init_main_thread()
@@ -250,30 +245,31 @@ static void init_main_thread()
 int main(int argc, char *const *argv)
 {
     int err, cpu = 0;
-    pthread_attr_t tattr;
     pthread_t task1;
     pthread_t task2;
-    pid_t pid;
+    pthread_attr_t tattr;
 
     init_main_thread();
 
     printf("== Real Time Test \n"
-           "== Test name: %s pid: %d\n"
+           "== Test name: %s \n"
            "== All results in microseconds\n",
-           test_name, getpid());
-    
+           test_name);
+
+
     if (argc == 1) {
+        //set task sched attr
         setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO), cpu);
-        err = pthread_create(&task1, &tattr, function, NULL);
+    
+        err = pthread_create(&task1, &tattr, function_1, NULL);
         if (err)
             error(1, err, "pthread_create()");
 
         pthread_join(task1, NULL);
     } else {
-        pid = (pid_t)atoi(argv[1]);
-        printf("argv[1]:%s pid:%d \n",argv[1],pid);
+
         setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO) - 1, cpu);
-        err = pthread_create(&task2, &tattr, function_kill, (void *)&pid);
+        err = pthread_create(&task2, &tattr, function_2, NULL);
         if (err)
             error(1, err, "pthread_create()");
 
