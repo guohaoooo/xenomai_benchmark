@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <signal.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <semaphore.h>
 
 
@@ -13,7 +15,7 @@
 #define TEN_MILLIONS 10000000
 #define SAMPLES_NUM  1000000
 
-char test_name[32] = "unavailable_sem";
+char test_name[32] = "named_unavailable_sem";
 
 static inline long long diff_ts(struct timespec *left, struct timespec *right)
 {
@@ -93,11 +95,11 @@ static void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu)
 void *function(void *arg) 
 {
     int dog = 0, err;
-    sem_t sem;
+    sem_t *sem;
 
-    err = sem_init(&sem, 0, 0);
-    if(err)
-        error(1, err, "sem_init()");
+    sem = sem_open("named_sem", O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
+    if(sem == SEM_FAILED)
+        error(1, -1, "sem_open()");
 
     for (;;) {
 
@@ -109,7 +111,7 @@ void *function(void *arg)
         for (count = sum = 0; count < samples; count++) {
 
             clock_gettime(CLOCK_MONOTONIC, &start);
-            err = sem_trywait(&sem);
+            err = sem_trywait(sem);
             clock_gettime(CLOCK_MONOTONIC, &end);
     
             dt = (int32_t)diff_ts(&end, &start);
