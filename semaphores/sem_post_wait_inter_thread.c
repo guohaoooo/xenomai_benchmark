@@ -13,7 +13,7 @@
 #define TEN_MILLIONS 10000000
 #define SAMPLES_NUM  100000
 
-char test_name[32] = "unavailable_sem_inter_thread";
+char test_name[32] = "sem_post_wait_inter_thread";
 
 static inline long long diff_ts(struct timespec *left, struct timespec *right)
 {

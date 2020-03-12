@@ -95,13 +95,14 @@ static void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu)
 
 void *function_1(void *arg) 
 {
-    int dog = 0, err, fd;
+    int dog = 0, err;
     sem_t *sem;
 
-    fd = shm_open("/sem", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
-    ftruncate(fd, sizeof(sem_t));
-    sem = mmap(NULL, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-    sem_init(sem, !0, 0);
+    sem = sem_open("/sem", O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
+    if(sem == SEM_FAILED) {
+        perror("sem open failed");
+        error(1, -1, "sem open");
+    }
 
     for (;;) {
 
@@ -144,13 +145,13 @@ void *function_1(void *arg)
 
 void *function_2(void *arg) 
 {
-    int dog = 0, err, fd;
+    int dog = 0, err;
     sem_t *sem;
-
-    fd = shm_open("/sem", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
-    ftruncate(fd, sizeof(sem_t));
-    sem = mmap(NULL, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-    sem_init(sem, !0, 0);
+    sem = sem_open("/sem", O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
+    if (sem == SEM_FAILED) {
+        perror("sem open failed");
+        error(1, -1, "sem_open");
+    }
 
     for (;;) {
 

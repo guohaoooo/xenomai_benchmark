@@ -97,7 +97,7 @@ void *function(void *arg)
     int dog = 0, err;
     sem_t *sem;
 
-    sem = sem_open("named_sem", O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
+    sem = sem_open("/sem", O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
     if(sem == SEM_FAILED)
         error(1, -1, "sem_open()");
 

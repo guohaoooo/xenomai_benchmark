@@ -6,17 +6,16 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <signal.h>
-#include <semaphore.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <semaphore.h>
 
 
 #define ONE_BILLION  1000000000
 #define TEN_MILLIONS 10000000
 #define SAMPLES_NUM  100000
 
-char test_name[32] = "sem_post_wait_inter_process";
+char test_name[32] = "named_sem_post_wait_inter_thread";
 
 static inline long long diff_ts(struct timespec *left, struct timespec *right)
 {
@@ -95,13 +94,13 @@ static void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu)
 
 void *function_1(void *arg) 
 {
-    int dog = 0, err, fd;
+    int dog = 0, err;
     sem_t *sem;
-
-    fd = shm_open("/sem", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
-    ftruncate(fd, sizeof(sem_t));
-    sem = mmap(NULL, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-    sem_init(sem, !0, 0);
+    sem = sem_open("/sem", O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
+    if(sem == SEM_FAILED) {
+        perror("sem_open failed");
+        error(1, -1, "sem_open");
+    }
 
     for (;;) {
 
@@ -115,9 +114,8 @@ void *function_1(void *arg)
             clock_gettime(CLOCK_MONOTONIC, &start);
             err = sem_wait(sem);
             if (err)
-                error(1, err, "sem_wait()");
-            clock_gettime(CLOCK_MONOTONIC, &end);
-    
+                error(1, err, "sem_wait()"); 
+            clock_gettime(CLOCK_MONOTONIC, &end); 
             dt = (int32_t)diff_ts(&end, &start);
 
             if (dt > max)
@@ -144,13 +142,13 @@ void *function_1(void *arg)
 
 void *function_2(void *arg) 
 {
-    int dog = 0, err, fd;
+    int dog = 0, err;
     sem_t *sem;
-
-    fd = shm_open("/sem", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
-    ftruncate(fd, sizeof(sem_t));
-    sem = mmap(NULL, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-    sem_init(sem, !0, 0);
+    sem = sem_open("/sem", O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
+    if(sem == SEM_FAILED) {
+        perror("sem_open failed");
+        error(1, -1, "sem_open");
+    }
 
     for (;;) {
 
@@ -256,27 +254,22 @@ int main(int argc, char *const *argv)
            "== All results in microseconds\n",
            test_name);
 
+    //set task sched attr
+    setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO), cpu);
 
-    if (argc == 1) {
-        //set task sched attr
-        setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO), cpu);
-    
-        err = pthread_create(&task1, &tattr, function_1, NULL);
-        if (err)
-            error(1, err, "pthread_create()");
+    err = pthread_create(&task1, &tattr, function_1, NULL);
+    if (err)
+        error(1, err, "pthread_create()");
 
-        pthread_join(task1, NULL);
-    } else {
-
-        setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO) - 1, cpu);
-        err = pthread_create(&task2, &tattr, function_2, NULL);
-        if (err)
-            error(1, err, "pthread_create()");
-
-        pthread_join(task2, NULL);
-    }
+    setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO) - 1, cpu);
+    err = pthread_create(&task2, &tattr, function_2, NULL);
+    if (err)
+        error(1, err, "pthread_create()");
 
     pthread_attr_destroy(&tattr);
+
+    pthread_join(task1, NULL);
+    pthread_join(task2, NULL);
 
     return 0;
 }

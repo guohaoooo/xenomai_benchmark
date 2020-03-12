@@ -7,6 +7,9 @@ CC := $(shell $(XENO_CONFIG) --cc)
 
 EXCUTABLE := unavailable_sem \
 	     named_unavailable_sem \
+	     named_sem_post_wait \
+	     named_sem_post_wait_inter_thread \
+	     named_sem_post_wait_inter_process \
 	     sem_post_wait \
 	     sem_post_wait_inter_process \
 	     sem_post_wait_inter_thread 

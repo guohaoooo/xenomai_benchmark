@@ -13,7 +13,7 @@
 #define TEN_MILLIONS 10000000
 #define SAMPLES_NUM  1000000
 
-char test_name[32] = "unavailable_sem";
+char test_name[32] = "sem_post_wait";
 
 static inline long long diff_ts(struct timespec *left, struct timespec *right)
 {
