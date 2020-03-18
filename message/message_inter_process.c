@@ -1,6 +1,7 @@
 #include <xeno_config.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #include <error.h>
 #include <unistd.h>
@@ -12,7 +13,12 @@
 
 #define ONE_BILLION  1000000000
 #define TEN_MILLIONS 10000000
-#define SAMPLES_NUM  100000
+#define SAMPLES_NUM  10000
+
+#define MSG_LEN 0
+
+#define IDDP_CLPORT 27
+#define IDDP_PORT_LABEL "iddp-server"
 
 char test_name[32] = "messsage_inter_process";
 
@@ -91,23 +97,43 @@ static void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu)
         error(1, ret, "pthread_attr_setaffinity_np()");
 }
 
-static void emptyhandler(int sig, siginfo_t *si, void *context) {}
+static void fail(const char *reason)
+{
+    perror(reason);
+    exit(EXIT_FAILURE);
+}
 
 void *server_function(void *arg) 
 {
     int dog = 0;
+    struct sockaddr_ipc saddr, claddr;
     struct rtipc_port_label plabel;
-    struct sockaddr_ipc saddr;
+    socklen_t addrlen;
+    size_t buffsz;
     char buf[1024];
-    size_t bufsz;
     int ret, s;
 
-    s = soket(AF_RTIPC, SOCK_DGRAM, IPCPROTO_IDDP);
-    if (s < 0) {
-        perror("soket");
-        exit(EXIT_FAILURE);
-    }
-        
+    s = socket(AF_RTIPC, SOCK_DGRAM, IPCPROTO_BUFP);
+    if (s < 0) 
+        fail("socket");
+
+    buffsz = 1024;
+    ret =setsockopt(s, SOL_BUFP, BUFP_BUFSZ,
+                    &buffsz, sizeof(buffsz));
+    if(ret)
+        fail("setsockopt");
+
+    strcpy(plabel.label, IDDP_PORT_LABEL);
+    ret = setsockopt(s, SOL_BUFP, BUFP_LABEL,
+                    &plabel, sizeof(plabel));
+    if(ret)
+        fail("setsockopt");
+
+    saddr.sipc_family = AF_RTIPC;
+    saddr.sipc_port = -1;
+    ret = bind(s, (struct sockaddr *)&saddr, sizeof(saddr));
+    if(ret)
+        fail("bind");
 
     for (;;) {
 
@@ -117,9 +143,15 @@ void *server_function(void *arg)
         struct timespec start, end;
         
         for (count = sum = 0; count < samples; count++) {
+            addrlen = sizeof(saddr);
 
             clock_gettime(CLOCK_MONOTONIC, &start);
-            
+            ret = read(s, buf, sizeof(buf));
+            if (ret < 0) {
+                close(s);
+                fail("read");
+            }
+
             clock_gettime(CLOCK_MONOTONIC, &end);
     
             dt = (int32_t)diff_ts(&end, &start);
@@ -133,7 +165,8 @@ void *server_function(void *arg)
             sum += dt;
         }
 
-        printf("Result|samples:task_1 %11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
+        printf("Result|samples:recv-%d  %11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
+                        ret,
                         samples,
                         (double)min / 1000,
                         (double)sum / (samples * 1000),
@@ -148,11 +181,32 @@ void *server_function(void *arg)
     return (arg);
 }
 
-void *function_kill(void *arg)
+void *client_function(void *arg)
 {
     int dog = 0;
-    pid_t pid = *(pid_t *)arg;
+    struct sockaddr_ipc svsaddr, clsaddr;
+    struct rtipc_port_label plabel;
+    int ret, s, n = 0, len = MSG_LEN;
+    char buf[1024] = {0};
 
+    s = socket(AF_RTIPC, SOCK_DGRAM, IPCPROTO_BUFP);
+    if (s < 0)
+        fail("socket");
+
+
+    strcpy(plabel.label, IDDP_PORT_LABEL);
+    ret = setsockopt(s, SOL_BUFP, BUFP_LABEL,
+                    &plabel, sizeof(plabel));
+    if (ret)
+        fail("setsockopt");
+
+    memset(&svsaddr, 0, sizeof(svsaddr));
+    svsaddr.sipc_family = AF_RTIPC;
+    svsaddr.sipc_port = -1;
+    ret = connect(s, (struct sockaddr *)&svsaddr, sizeof(svsaddr));
+    if(ret)
+        fail("connect");
+    
     for (;;) {
         
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
@@ -164,7 +218,11 @@ void *function_kill(void *arg)
 
             clock_gettime(CLOCK_MONOTONIC, &start);
             
-            kill(pid, SIGUSR1);
+            ret = write(s, buf, len); 
+            if (ret < 0) {
+                close(s);
+                fail("write");
+            }
 
             clock_gettime(CLOCK_MONOTONIC, &end);
     
@@ -177,9 +235,11 @@ void *function_kill(void *arg)
                 min = dt;
 
             sum += dt;
+
         }
 
-        printf("Result|samples:task_2 %11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
+        printf("Result|samples:client-%d %11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
+                        len,
                         samples,
                         (double)min / 1000,
                         (double)sum / (samples * 1000),
@@ -252,7 +312,6 @@ int main(int argc, char *const *argv)
     pthread_attr_t tattr;
     pthread_t task1;
     pthread_t task2;
-    pid_t pid;
 
     init_main_thread();
 
@@ -269,10 +328,8 @@ int main(int argc, char *const *argv)
 
         pthread_join(task1, NULL);
     } else {
-        pid = (pid_t)atoi(argv[1]);
-        printf("argv[1]:%s pid:%d \n",argv[1],pid);
         setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO) - 1, cpu);
-        err = pthread_create(&task2, &tattr, function_kill, (void *)&pid);
+        err = pthread_create(&task2, &tattr, client_function, NULL);
         if (err)
             error(1, err, "pthread_create()");
 
