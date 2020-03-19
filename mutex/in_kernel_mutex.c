@@ -10,7 +10,7 @@
 
 #define ONE_BILLION  1000000000
 #define TEN_MILLIONS 10000000
-#define SAMPLES_NUM  100000
+#define SAMPLES_NUM  10000
 
 char test_name[32] = "in_kernel_mutex";
 
