@@ -5,7 +5,11 @@ LDFLAGS := $(shell $(XENO_CONFIG) --posix --ldflags)
 LDFLAGS_EX := -Wl,-rpath=/usr/xenomai/lib
 CC := $(shell $(XENO_CONFIG) --cc)
 
-EXCUTABLE := unavailable_mq_receive
+EXCUTABLE := unavailable_mq_receive \
+	     mq_send_receive \
+	     mq_send_receive_full \
+	     mq_send_receive_thread \
+	     mq_send_receive_process 
 
 all: $(EXCUTABLE)
 

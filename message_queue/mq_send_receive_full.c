@@ -13,10 +13,10 @@
 
 #define ONE_BILLION  1000000000
 #define TEN_MILLIONS 10000000
-#define SAMPLES_NUM  100000
+#define SAMPLES_NUM  10000
 #define MQ_NAME "/mq"
 
-char test_name[32] = "unavailable_mq_receive";
+char test_name[32] = "mq_send_receive_full";
 
 static inline long long diff_ts(struct timespec *left, struct timespec *right)
 {
@@ -95,18 +95,22 @@ static void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu)
 
 void *function(void *arg) 
 {
-    int dog = 0, err;
-    char ret[10] = {0};
+    int dog = 0, err, fill;
+    unsigned int priority;
+    char ret[256] = {0};
     mqd_t mq;
-    struct mq_attr mqattr = {O_NONBLOCK, 1, 10, 0};
+    struct mq_attr mqattr = {0, 64, 256, 0};
 
     mq_unlink(MQ_NAME);
 
-    mq = mq_open(MQ_NAME, O_RDWR|O_NONBLOCK|O_CREAT, S_IRUSR|S_IWUSR, &mqattr);
+    mq = mq_open(MQ_NAME, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR, &mqattr);
     if(mq == (mqd_t)-1) {
         perror("mq_open");
         exit(EXIT_FAILURE);
     }
+
+    for (fill = 0; fill < 64; ++fill)
+        mq_send(mq, ret, 256, rand() % MQ_PRIO_MAX);
 
     for (;;) {
 
@@ -118,11 +122,19 @@ void *function(void *arg)
         for (count = sum = 0; count < samples; count++) {
 
             clock_gettime(CLOCK_MONOTONIC, &start);
-            err = mq_receive(mq, ret, sizeof(ret), NULL);
+
+            err = mq_receive(mq, ret, sizeof(ret), &priority);
             if (errno != EAGAIN && err < 0) {
                 perror("mq_receive err");
                 exit(EXIT_FAILURE);
             }
+
+            err = mq_send(mq, ret, 256, rand() % MQ_PRIO_MAX);
+            if (err) {
+                perror("mq_send");
+                exit(EXIT_FAILURE);
+            }
+
             clock_gettime(CLOCK_MONOTONIC, &end);
     
             dt = (int32_t)diff_ts(&end, &start);

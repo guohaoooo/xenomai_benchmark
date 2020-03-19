@@ -13,10 +13,10 @@
 
 #define ONE_BILLION  1000000000
 #define TEN_MILLIONS 10000000
-#define SAMPLES_NUM  100000
+#define SAMPLES_NUM  10000
 #define MQ_NAME "/mq"
 
-char test_name[32] = "unavailable_mq_receive";
+char test_name[32] = "mq_send_receive_thread";
 
 static inline long long diff_ts(struct timespec *left, struct timespec *right)
 {
@@ -93,16 +93,16 @@ static void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu)
 }
 
 
-void *function(void *arg) 
+void *server_function(void *arg) 
 {
     int dog = 0, err;
-    char ret[10] = {0};
+    char ret[256] = {0};
     mqd_t mq;
-    struct mq_attr mqattr = {O_NONBLOCK, 1, 10, 0};
+    struct mq_attr mqattr = {0, 1, 256, 0};
 
     mq_unlink(MQ_NAME);
 
-    mq = mq_open(MQ_NAME, O_RDWR|O_NONBLOCK|O_CREAT, S_IRUSR|S_IWUSR, &mqattr);
+    mq = mq_open(MQ_NAME, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR, &mqattr);
     if(mq == (mqd_t)-1) {
         perror("mq_open");
         exit(EXIT_FAILURE);
@@ -118,11 +118,13 @@ void *function(void *arg)
         for (count = sum = 0; count < samples; count++) {
 
             clock_gettime(CLOCK_MONOTONIC, &start);
+
             err = mq_receive(mq, ret, sizeof(ret), NULL);
             if (errno != EAGAIN && err < 0) {
                 perror("mq_receive err");
                 exit(EXIT_FAILURE);
             }
+
             clock_gettime(CLOCK_MONOTONIC, &end);
     
             dt = (int32_t)diff_ts(&end, &start);
@@ -149,6 +151,60 @@ void *function(void *arg)
     return (arg);
 }
 
+void *client_function(void *arg) 
+{
+    int dog = 0, err;
+    char ret[256] = {0};
+    mqd_t mq;
+
+    mq = mq_open(MQ_NAME, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR, NULL);
+    if(mq == (mqd_t)-1) {
+        perror("mq_open");
+        exit(EXIT_FAILURE);
+    }
+
+    for (;;) {
+
+        int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
+        int64_t sum;
+        int count, samples = SAMPLES_NUM;
+        struct timespec start, end;
+        
+        for (count = sum = 0; count < samples; count++) {
+
+            clock_gettime(CLOCK_MONOTONIC, &start);
+
+            err = mq_send(mq, ret, 256, 0);
+            if (err) {
+                perror("mq_send");
+                exit(EXIT_FAILURE);
+            }
+
+            clock_gettime(CLOCK_MONOTONIC, &end);
+    
+            dt = (int32_t)diff_ts(&end, &start);
+
+            if (dt > max)
+                max = dt;
+            
+            if (dt < min)
+                min = dt;
+
+            sum += dt;
+        }
+
+        printf("Result|samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
+                        samples,
+                        (double)min / 1000,
+                        (double)sum / (samples * 1000),
+                        (double)max / 1000);
+        dog++;
+        if (dog%10 == 0)
+            sleep(1);
+    }
+
+    return (arg);
+}
 static void init_main_thread()
 {
     int err, cpu = 0, policy;
@@ -203,7 +259,8 @@ static void init_main_thread()
 int main(int argc, char *const *argv)
 {
     int err, cpu = 0;
-    pthread_t task;
+    pthread_t task1;
+    pthread_t task2;
     pthread_attr_t tattr;
 
     init_main_thread();
@@ -214,15 +271,21 @@ int main(int argc, char *const *argv)
            test_name);
 
     //set task sched attr
-    setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO), cpu);
 
-    err = pthread_create(&task, &tattr, function, NULL);
+    setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO), cpu);
+    err = pthread_create(&task1, &tattr, server_function, NULL);
+    if (err)
+        error(1, err, "pthread_create()");
+
+    setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO) - 1, cpu);
+    err = pthread_create(&task2, &tattr, client_function, NULL);
     if (err)
         error(1, err, "pthread_create()");
 
     pthread_attr_destroy(&tattr);
 
-    pthread_join(task, NULL);
+    pthread_join(task1, NULL);
+    pthread_join(task2, NULL);
 
     return 0;
 }
