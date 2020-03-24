@@ -91,6 +91,7 @@ static void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu)
 
 void *function(void *arg) 
 {
+    int dog = 0;
 
     for (;;) {
 
@@ -123,7 +124,9 @@ void *function(void *arg)
                         (double)min / 1000,
                         (double)sum / (samples * 1000),
                         (double)max / 1000);
-
+        dog++;
+        if(dog%10 == 0)
+            sleep(1);
     }
 
     return (arg);

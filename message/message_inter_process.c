@@ -15,7 +15,7 @@
 #define TEN_MILLIONS 10000000
 #define SAMPLES_NUM  10000
 
-#define MSG_LEN 0
+#define MSG_LEN 1024
 
 #define IDDP_CLPORT 27
 #define IDDP_PORT_LABEL "iddp-server"
@@ -113,18 +113,13 @@ void *server_function(void *arg)
     char buf[1024];
     int ret, s;
 
-    s = socket(AF_RTIPC, SOCK_DGRAM, IPCPROTO_BUFP);
+    s = socket(AF_RTIPC, SOCK_DGRAM, IPCPROTO_IDDP);
     if (s < 0) 
         fail("socket");
 
-    buffsz = 1024;
-    ret =setsockopt(s, SOL_BUFP, BUFP_BUFSZ,
-                    &buffsz, sizeof(buffsz));
-    if(ret)
-        fail("setsockopt");
 
     strcpy(plabel.label, IDDP_PORT_LABEL);
-    ret = setsockopt(s, SOL_BUFP, BUFP_LABEL,
+    ret = setsockopt(s, SOL_IDDP, IDDP_LABEL,
                     &plabel, sizeof(plabel));
     if(ret)
         fail("setsockopt");
@@ -151,7 +146,13 @@ void *server_function(void *arg)
                 close(s);
                 fail("read");
             }
-
+#if 1
+            ret = write(s, buf, sizeof(buf)); 
+            if (ret < 0) {
+                close(s);
+                fail("write");
+            }
+#endif
             clock_gettime(CLOCK_MONOTONIC, &end);
     
             dt = (int32_t)diff_ts(&end, &start);
@@ -189,13 +190,19 @@ void *client_function(void *arg)
     int ret, s, n = 0, len = MSG_LEN;
     char buf[1024] = {0};
 
-    s = socket(AF_RTIPC, SOCK_DGRAM, IPCPROTO_BUFP);
+    s = socket(AF_RTIPC, SOCK_DGRAM, IPCPROTO_IDDP);
     if (s < 0)
         fail("socket");
 
 
+    clsaddr.sipc_family = AF_RTIPC;
+    clsaddr.sipc_port = IDDP_CLPORT;
+    ret = bind(s, (struct sockaddr *)&clsaddr, sizeof(clsaddr));
+    if(ret)
+        fail("bind");
+
     strcpy(plabel.label, IDDP_PORT_LABEL);
-    ret = setsockopt(s, SOL_BUFP, BUFP_LABEL,
+    ret = setsockopt(s, SOL_IDDP, IDDP_LABEL,
                     &plabel, sizeof(plabel));
     if (ret)
         fail("setsockopt");
