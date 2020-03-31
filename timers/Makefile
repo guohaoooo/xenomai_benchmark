@@ -1,17 +1,17 @@
 
 XENO_CONFIG := /usr/xenomai/bin/xeno-config
 CFLAGS := $(shell $(XENO_CONFIG) --posix --cflags)
-LDFLAGS := $(shell $(XENO_CONFIG) --posix --ldflags) 
+LDFLAGS := $(shell $(XENO_CONFIG) --posix --ldflags)
 LDFLAGS_EX := -Wl,-rpath=/usr/xenomai/lib
 CC := $(shell $(XENO_CONFIG) --cc)
 
 EXCUTABLE := timer_settime \
-	     timer_create_delete 
+	     timer_create_delete
 
 all: $(EXCUTABLE)
 
 %: %.c
-	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS) $(LDFLAGS_EX)
+	$(CC) -o $@ $< ../util.c $(CFLAGS) $(LDFLAGS) $(LDFLAGS_EX)
 
 clean:
 	rm ${EXCUTABLE}
