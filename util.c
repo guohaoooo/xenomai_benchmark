@@ -5,6 +5,7 @@
 #include<pthread.h>
 #include<unistd.h>
 
+#ifdef __XENO__
 static const char *reason_str[] = {
 	[SIGDEBUG_UNDEFINED] = "received SIGDEBUG for unknown reason",
 	[SIGDEBUG_MIGRATE_SIGNAL] = "received signal",
@@ -42,6 +43,7 @@ static void sigdebug(int sig, siginfo_t *si, void *context)
 	signal(sig, SIG_DFL);
 	kill(getpid(), sig);
 }
+#endif
 
 void fail(const char *reason)
 {
@@ -81,11 +83,10 @@ void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu)
 }
 
 void init_main_thread() {
-    int err, cpu = 0, policy;
+    int err, cpu = 0;
     cpu_set_t cpus;
     sigset_t mask;
     struct sigaction sa __attribute__((unused));
-    struct sched_param param, old_param;
 
     // block signal
     sigemptyset(&mask);
@@ -95,6 +96,7 @@ void init_main_thread() {
     sigaddset(&mask, SIGALRM);
     pthread_sigmask(SIG_BLOCK, &mask, NULL);
 
+#ifdef __XENO__
     // debug signal
     sigemptyset(&sa.sa_mask);
     sa.sa_sigaction = sigdebug;
@@ -105,7 +107,7 @@ void init_main_thread() {
     err = pthread_setmode_np(0, PTHREAD_WARNSW, NULL);
     if (err)
         fail("pthread_setmode_np()");
-
+#endif
     // set cpu affinity
     CPU_ZERO(&cpus);
     CPU_SET(cpu, &cpus);
@@ -113,19 +115,5 @@ void init_main_thread() {
     if (err)
         fail("pthread_setaffinity_np");
 
-#if 0
-    //set main thread sched policy
-    err = pthread_getschedparam(pthread_self(), &policy, &old_param);
-    if(err)
-        fail("pthread_getschedparam");
-
-    if ((policy != SCHED_FIFO) && (policy != SCHED_RR)) {
-        param = old_param;
-        param.sched_priority = 99;
-        err = pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);
-        if (err)
-            fail("pthread_setschedparam");
-    }
-#endif
 }
 

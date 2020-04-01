@@ -1,9 +1,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <cobalt/sys/cobalt.h>
 #include "../util.h"
-
+#ifdef __XENO__
+#include <cobalt/sys/cobalt.h>
+#endif
+#ifndef __XENO__
+#include <stdint.h>
+#endif
 #define SAMPLES_NUM  100000
 
 char test_name[32] = "getpid";
@@ -18,12 +22,15 @@ void *function(void *arg)
         int64_t sum;
         int count, samples = SAMPLES_NUM;
         struct timespec start, end;
-        pid_t pid;
 
         for (count = sum = 0; count < samples; count++) {
 
             clock_gettime(CLOCK_MONOTONIC, &start);
-            pid = cobalt_thread_pid(pthread_self());
+#ifdef __XENO__
+            (void)cobalt_thread_pid(pthread_self());
+#else
+            (void)getpid();
+#endif
             clock_gettime(CLOCK_MONOTONIC, &end);
 
             dt = (int32_t)diff_ts(&end, &start);

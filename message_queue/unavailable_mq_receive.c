@@ -6,6 +6,9 @@
 #include <mqueue.h>
 #include <errno.h>
 #include "../util.h"
+#ifndef __XENO__
+#include <stdint.h>
+#endif
 
 #define SAMPLES_NUM  100000
 #define MQ_NAME "/mq"

@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#ifndef __XENO__
+#include <stdint.h>
+#endif
 #include "../util.h"
 
 #define SAMPLES_NUM  10000

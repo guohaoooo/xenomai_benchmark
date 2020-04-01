@@ -3,6 +3,9 @@
 #include <pthread.h>
 #include <signal.h>
 #include "../util.h"
+#ifndef __XENO__
+#include <stdint.h>
+#endif
 
 #define SAMPLES_NUM  100000
 

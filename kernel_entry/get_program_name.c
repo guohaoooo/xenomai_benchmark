@@ -1,7 +1,12 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#ifdef __XENO__
 #include <boilerplate/setup.h>
+#else
+#include <stdint.h>
+#endif
+
 #include "../util.h"
 
 #define SAMPLES_NUM  1000000
@@ -22,7 +27,11 @@ void *function(void *arg)
         for (count = sum = 0; count < samples; count++) {
 
             clock_gettime(CLOCK_MONOTONIC, &start);
-            get_program_name();
+#ifdef __XENO__
+            (void)get_program_name();
+#else
+            (void)pthread_self();
+#endif
             clock_gettime(CLOCK_MONOTONIC, &end);
 
             dt = (int32_t)diff_ts(&end, &start);

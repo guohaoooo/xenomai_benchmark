@@ -7,9 +7,16 @@
 #include <mqueue.h>
 #include <errno.h>
 #include "../util.h"
+#ifndef __XENO__
+#include <stdint.h>
+#endif
 
 #define SAMPLES_NUM  10000
 #define MQ_NAME "/mq"
+
+#ifndef MQ_PRIO_MAX
+#define MQ_PRIO_MAX 32768
+#endif
 
 char test_name[32] = "mq_send_receive_full";
 

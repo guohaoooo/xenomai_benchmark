@@ -1,9 +1,16 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#ifndef __XENO__
+#include <stdint.h>
+#endif
 #include "../util.h"
 
 #define SAMPLES_NUM  100000
+
+#ifndef PTHREAD_STACK_MIN
+#define PTHREAD_STACK_MIN 16384
+#endif
 
 char test_name[32] = "pthread_create_join_ss";
 

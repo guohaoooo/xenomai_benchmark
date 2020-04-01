@@ -2,8 +2,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <rtdm/ipc.h>
 #include <sys/syscall.h>
+#ifdef __XENO__
+#include <rtdm/ipc.h>
+#else
+#include <stdint.h>
+#endif
 #include "../util.h"
 
 #define SAMPLES_NUM  10000

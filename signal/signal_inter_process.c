@@ -5,6 +5,9 @@
 #include <signal.h>
 #include <sys/syscall.h>
 #include "../util.h"
+#ifndef __XENO__
+#include <stdint.h>
+#endif
 
 #define SAMPLES_NUM  100000
 
@@ -16,7 +19,6 @@ void *function(void *arg)
 {
     struct sigaction sa __attribute__((unused));
     sigset_t mask;
-    pid_t pid = syscall(__NR_gettid);
 
     sigfillset(&sa.sa_mask);
     sa.sa_sigaction = emptyhandler;

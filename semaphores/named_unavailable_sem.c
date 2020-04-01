@@ -2,9 +2,13 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <sys/stat.h>
 #include <semaphore.h>
 #include "../util.h"
+#ifndef __XENO__
+#include <stdint.h>
+#endif
 
 #define SAMPLES_NUM  1000000
 
@@ -30,6 +34,10 @@ void *function(void *arg)
 
             clock_gettime(CLOCK_MONOTONIC, &start);
             err = sem_trywait(sem);
+            if (err && (errno != EAGAIN))
+            {
+                fail("sem_trywait");
+            }
             clock_gettime(CLOCK_MONOTONIC, &end);
 
             dt = (int32_t)diff_ts(&end, &start);

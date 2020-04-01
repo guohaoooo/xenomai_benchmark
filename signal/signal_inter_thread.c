@@ -3,6 +3,9 @@
 #include <pthread.h>
 #include <signal.h>
 #include "../util.h"
+#ifndef __XENO__
+#include <stdint.h>
+#endif
 
 #define SAMPLES_NUM  100000
 
@@ -17,7 +20,6 @@ static void emptyhandler(int sig, siginfo_t *si, void *context) {}
 void *function(void *arg)
 {
     struct sigaction sa __attribute__((unused));
-    pthread_t thread = pthread_self();
     sigset_t mask;
 
     sigfillset(&sa.sa_mask);

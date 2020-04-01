@@ -2,6 +2,9 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "../util.h"
+#ifndef __XENO__
+#include <stdint.h>
+#endif
 
 #define SAMPLES_NUM  10000
 
