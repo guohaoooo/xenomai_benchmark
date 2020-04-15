@@ -11,6 +11,7 @@
 #endif
 
 #define SAMPLES_NUM  1000000
+#define SEM_NAME "/sem"
 
 char test_name[32] = "named_unavailable_sem";
 
@@ -19,7 +20,8 @@ void *function(void *arg)
     int dog = 0, err;
     sem_t *sem;
 
-    sem = sem_open("/sem", O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
+    sem_unlink(SEM_NAME);
+    sem = sem_open(SEM_NAME, O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
     if(sem == SEM_FAILED)
         fail("sem_open()");
 

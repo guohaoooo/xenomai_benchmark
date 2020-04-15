@@ -10,6 +10,7 @@
 #endif
 
 #define SAMPLES_NUM  100000
+#define SEM_NAME "/sem"
 
 char test_name[32] = "named_sem_post_wait_inter_thread";
 
@@ -17,7 +18,8 @@ void *function_1(void *arg)
 {
     int dog = 0, err;
     sem_t *sem;
-    sem = sem_open("/sem", O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
+    sem_unlink(SEM_NAME);
+    sem = sem_open(SEM_NAME, O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
     if(sem == SEM_FAILED) {
         fail("sem_open failed");
     }
@@ -64,7 +66,7 @@ void *function_2(void *arg)
 {
     int dog = 0, err;
     sem_t *sem;
-    sem = sem_open("/sem", O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
+    sem = sem_open(SEM_NAME, O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
     if(sem == SEM_FAILED) {
         fail("sem_open failed");
     }

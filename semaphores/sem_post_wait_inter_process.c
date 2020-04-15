@@ -11,6 +11,7 @@
 #endif
 
 #define SAMPLES_NUM  100000
+#define SHM_NAME "/unname_sem"
 
 char test_name[32] = "sem_post_wait_inter_process";
 
@@ -19,7 +20,8 @@ void *function_1(void *arg)
     int dog = 0, err, fd;
     sem_t *sem;
 
-    fd = shm_open("/sem", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+    shm_unlink(SHM_NAME);
+    fd = shm_open(SHM_NAME, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
     ftruncate(fd, sizeof(sem_t));
     sem = mmap(NULL, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
     sem_init(sem, !0, 0);
@@ -68,7 +70,7 @@ void *function_2(void *arg)
     int dog = 0, err, fd;
     sem_t *sem;
 
-    fd = shm_open("/sem", O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
+    fd = shm_open(SHM_NAME, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
     ftruncate(fd, sizeof(sem_t));
     sem = mmap(NULL, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
     sem_init(sem, !0, 0);

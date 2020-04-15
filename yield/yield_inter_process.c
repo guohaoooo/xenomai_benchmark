@@ -6,15 +6,15 @@
 #endif
 #include "../util.h"
 
-#define SAMPLES_NUM  10000
+#define SAMPLES_NUM  100000
 
 char test_name[32] = "sched_yield_inter_process";
 
 void *function(void *arg)
 {
-    int dog = 0;
+    int i = 0;
 
-    for (;;) {
+    for (i=0; i<10; i++) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
@@ -45,9 +45,6 @@ void *function(void *arg)
                         (double)min / 1000,
                         (double)sum / (samples * 1000),
                         (double)max / 1000);
-        dog++;
-        if(dog%10 == 0)
-            sleep(1);
 
     }
 

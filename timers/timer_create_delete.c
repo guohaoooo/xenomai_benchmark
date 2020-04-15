@@ -7,7 +7,7 @@
 #endif
 #include "../util.h"
 
-#define SAMPLES_NUM  10000
+#define SAMPLES_NUM  100000
 
 char test_name[32] = "timer_create_delete";
 
