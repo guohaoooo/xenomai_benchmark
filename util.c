@@ -4,6 +4,9 @@
 #include<errno.h>
 #include<pthread.h>
 #include<unistd.h>
+#ifndef __XENO__
+#include<stdint.h>
+#endif
 
 #ifdef __XENO__
 static const char *reason_str[] = {
@@ -44,6 +47,25 @@ static void sigdebug(int sig, siginfo_t *si, void *context)
 	kill(getpid(), sig);
 }
 #endif
+
+void print_result(int loop, int samples, int32_t min, int32_t max, int64_t sum)
+{
+
+    printf("Result|loop:%5d|samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
+                loop, samples,
+                (double)min / 1000,
+                (double)sum / (samples * 1000),
+                (double)max / 10000);
+
+}
+
+void print_header(char *name)
+{
+    printf("== Real Time Test \n"
+           "== Test name: %s \n"
+           "== All result in microseconds\n",
+           name);
+}
 
 void fail(const char *reason)
 {

@@ -5,6 +5,9 @@
 void fail(const char *reason);
 void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu);
 void init_main_thread();
+void print_header(char *name);
+void print_result(int loop, int samples, int32_t min, int32_t max, int64_t sum);
+
 
 static inline long long diff_ts(struct timespec *left, struct timespec *right)
 {
