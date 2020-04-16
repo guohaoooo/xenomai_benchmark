@@ -3,10 +3,20 @@
 #include<signal.h>
 #include<errno.h>
 #include<pthread.h>
+#include<semaphore.h>
+#include<fcntl.h>
 #include<unistd.h>
 #ifndef __XENO__
 #include<stdint.h>
 #endif
+
+#define SEM_NAME "/inter_process"
+
+void fail(const char *reason)
+{
+    perror(reason);
+    exit(EXIT_FAILURE);
+}
 
 #ifdef __XENO__
 static const char *reason_str[] = {
@@ -67,10 +77,29 @@ void print_header(char *name)
            name);
 }
 
-void fail(const char *reason)
+void sync_process_step(void *first)
 {
-    perror(reason);
-    exit(EXIT_FAILURE);
+    int err;
+    sem_t *sem;
+
+    if (first) {
+        sem_unlink(SEM_NAME);
+        sem = sem_open(SEM_NAME, O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
+        if(sem == SEM_FAILED)
+            fail("sem open failed");
+
+        err = sem_wait(sem);
+        if (err)
+            fail("sem wait failed");
+    } else {
+        sem = sem_open(SEM_NAME, O_ACCMODE, 0, 0);
+        if (sem == SEM_FAILED)
+            fail("sem open failed");
+
+        err = sem_post(sem);
+        if (err)
+            fail("sem post");
+    }
 }
 
 void setup_sched_parameters(pthread_attr_t *attr, int prio, int cpu)

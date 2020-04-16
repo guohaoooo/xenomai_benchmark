@@ -7,14 +7,17 @@
 #include "../util.h"
 
 #define SAMPLES_NUM  10000
+#define SAMPLES_LOOP 100
 
 char test_name[32] = "sched_yield_self";
 
 void *function(void *arg)
 {
-    int dog = 0;
+//    int dog = 0;
+    int i;
+    int loop = SAMPLES_LOOP;
 
-    for (;;) {
+    for (i = 0; i < loop; i++) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
@@ -40,14 +43,12 @@ void *function(void *arg)
             sum += dt;
         }
 
-        printf("Result|samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
-                        samples,
-                        (double)min / 1000,
-                        (double)sum / (samples * 1000),
-                        (double)max / 1000);
+        print_result(i, samples, min, max, sum);
+#if 0
         dog++;
         if(dog%10 == 0)
             sleep(1);
+#endif
     }
 
     return (arg);
@@ -61,10 +62,7 @@ int main(int argc, char *const *argv)
 
     init_main_thread();
 
-    printf("== Real Time Test \n"
-           "== Test name: %s \n"
-           "== All results in microseconds\n",
-           test_name);
+    print_header(test_name);
 
     //set task sched attr
     setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO), cpu);
