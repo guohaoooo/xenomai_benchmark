@@ -91,6 +91,9 @@ void sync_process_step(void *first)
         err = sem_wait(sem);
         if (err)
             fail("sem wait failed");
+
+        sem_unlink(SEM_NAME);
+
     } else {
         sem = sem_open(SEM_NAME, O_ACCMODE, 0, 0);
         if (sem == SEM_FAILED)
