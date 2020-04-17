@@ -10,7 +10,7 @@
 #include<stdint.h>
 #endif
 
-#define SEM_NAME "/inter_process"
+#define SEM_NAME "/sync_task"
 
 void fail(const char *reason)
 {
@@ -65,7 +65,7 @@ void print_result(int loop, int samples, int32_t min, int32_t max, int64_t sum)
                 loop, samples,
                 (double)min / 1000,
                 (double)sum / (samples * 1000),
-                (double)max / 10000);
+                (double)max / 1000);
 
 }
 
