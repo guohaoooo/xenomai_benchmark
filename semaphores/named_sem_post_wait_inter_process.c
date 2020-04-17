@@ -5,20 +5,24 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "../util.h"
 #ifndef __XENO__
 #include <stdint.h>
 #endif
+#include "../util.h"
 
-#define SAMPLES_NUM  100000
-#define SEM_NAME "/sem"
+#define SAMPLES_NUM   100000
+#define SAMPLES_LOOP  100
+#define SEM_NAME "/named_sem"
 
-char test_name[32] = "sem_post_wait_inter_process";
+char test_name[64] = "named sem_post_wait_inter_process";
 
 void *function_1(void *arg)
 {
-    int dog = 0, err;
+//    int dog = 0;
+    int err, i, loop = SAMPLES_LOOP;
     sem_t *sem;
+
+    sync_process_step(arg);
 
     sem_unlink(SEM_NAME);
     sem = sem_open(SEM_NAME, O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
@@ -26,7 +30,7 @@ void *function_1(void *arg)
         fail("sem open failed");
     }
 
-    for (;;) {
+    for (i = 0; i < loop; i++) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
@@ -52,14 +56,12 @@ void *function_1(void *arg)
             sum += dt;
         }
 
-        printf("Result| task1: samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
-                        samples,
-                        (double)min / 1000,
-                        (double)sum / (samples * 1000),
-                        (double)max / 1000);
+        print_result(i, samples, min, max, sum);
+#if 0
         dog++;
         if (dog%10 == 0)
             sleep(1);
+#endif
     }
 
     return (arg);
@@ -67,14 +69,18 @@ void *function_1(void *arg)
 
 void *function_2(void *arg)
 {
-    int dog = 0, err;
+//    int dog = 0;
+    int err, i, loop = SAMPLES_LOOP;
     sem_t *sem;
-    sem = sem_open(SEM_NAME, O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
+
+    sync_process_step(arg);
+
+    sem = sem_open(SEM_NAME, O_ACCMODE, 0, 0);
     if (sem == SEM_FAILED) {
         fail("sem open failed");
     }
 
-    for (;;) {
+    for (i = 0; i < loop; i++) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
@@ -100,14 +106,12 @@ void *function_2(void *arg)
             sum += dt;
         }
 
-        printf("Result| task2: samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
-                        samples,
-                        (double)min / 1000,
-                        (double)sum / (samples * 1000),
-                        (double)max / 1000);
+        print_result(i, samples, min, max, sum);
+#if 0
         dog++;
         if (dog%10 == 0)
             sleep(1);
+#endif
     }
 
     return (arg);
@@ -115,7 +119,7 @@ void *function_2(void *arg)
 
 int main(int argc, char *const *argv)
 {
-    int err, cpu = 0;
+    int err, cpu = 0, first;
     pthread_t task1;
     pthread_t task2;
     pthread_attr_t tattr;
@@ -132,7 +136,7 @@ int main(int argc, char *const *argv)
         //set task sched attr
         setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO), cpu);
 
-        err = pthread_create(&task1, &tattr, function_1, NULL);
+        err = pthread_create(&task1, &tattr, function_1, &first);
         if (err)
             fail("pthread_create()");
 
@@ -148,6 +152,8 @@ int main(int argc, char *const *argv)
     }
 
     pthread_attr_destroy(&tattr);
+
+    sem_unlink(SEM_NAME);
 
     return 0;
 }

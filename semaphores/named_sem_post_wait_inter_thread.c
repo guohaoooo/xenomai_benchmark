@@ -9,29 +9,32 @@
 #include <stdint.h>
 #endif
 
-#define SAMPLES_NUM  100000
-#define SEM_NAME "/sem"
+#define SAMPLES_NUM   100000
+#define SAMPLES_LOOP  100
+#define SEM_NAME "/named_sem"
 
 char test_name[32] = "named_sem_post_wait_inter_thread";
 
 void *function_1(void *arg)
 {
-    int dog = 0, err;
+//    int dog = 0;
+    int err, i, loop = SAMPLES_LOOP;
     sem_t *sem;
+
     sem_unlink(SEM_NAME);
     sem = sem_open(SEM_NAME, O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
     if(sem == SEM_FAILED) {
         fail("sem_open failed");
     }
 
-    for (;;) {
+    for (i = 0; i < loop; i++) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
-        int64_t sum;
+        int64_t sum = 0;
         int count, samples = SAMPLES_NUM;
         struct timespec start, end;
 
-        for (count = sum = 0; count < samples; count++) {
+        for (count = 0; count < samples; count++) {
 
             clock_gettime(CLOCK_MONOTONIC, &start);
             err = sem_wait(sem);
@@ -49,14 +52,13 @@ void *function_1(void *arg)
             sum += dt;
         }
 
-        printf("Result| task1: samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
-                        samples,
-                        (double)min / 1000,
-                        (double)sum / (samples * 1000),
-                        (double)max / 1000);
+        print_result(i, samples, min, max, sum);
+
+#if 0
         dog++;
         if (dog%10 == 0)
             sleep(1);
+#endif
     }
 
     return (arg);
@@ -64,14 +66,16 @@ void *function_1(void *arg)
 
 void *function_2(void *arg)
 {
-    int dog = 0, err;
+//    int dog = 0;
+    int err, i, loop = SAMPLES_LOOP;
+
     sem_t *sem;
-    sem = sem_open(SEM_NAME, O_ACCMODE|O_CREAT, S_IRUSR|S_IWUSR, 0);
+    sem = sem_open(SEM_NAME, O_ACCMODE, 0, 0);
     if(sem == SEM_FAILED) {
         fail("sem_open failed");
     }
 
-    for (;;) {
+    for (i = 0; i < loop; i++) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
@@ -97,14 +101,13 @@ void *function_2(void *arg)
             sum += dt;
         }
 
-        printf("Result| task2: samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
-                        samples,
-                        (double)min / 1000,
-                        (double)sum / (samples * 1000),
-                        (double)max / 1000);
+
+        print_result(i, samples, min, max, sum);
+#if 0
         dog++;
         if (dog%10 == 0)
             sleep(1);
+#endif
     }
 
     return (arg);
@@ -119,10 +122,7 @@ int main(int argc, char *const *argv)
 
     init_main_thread();
 
-    printf("== Real Time Test \n"
-           "== Test name: %s \n"
-           "== All results in microseconds\n",
-           test_name);
+    print_header(test_name);
 
     //set task sched attr
     setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO), cpu);
@@ -140,6 +140,8 @@ int main(int argc, char *const *argv)
 
     pthread_join(task1, NULL);
     pthread_join(task2, NULL);
+
+    sem_unlink(SEM_NAME);
 
     return 0;
 }
