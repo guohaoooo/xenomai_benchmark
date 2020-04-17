@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
-#include "../util.h"
 #ifndef __XENO__
 #include <stdint.h>
 #endif
+#include "../util.h"
 
 #define SAMPLES_NUM  10000
+#define SAMPLES_LOOP 100
 
 char test_name[32] = "contested_mutex";
 
@@ -14,7 +15,9 @@ pthread_mutex_t mutex1, mutex2, mutex3, mutex4;
 
 void *function_1(void *arg)
 {
-    int dog = 0, err;
+//    int dog = 0;
+    int err, i;
+    int loop = SAMPLES_LOOP;
 
     err = pthread_mutex_init(&mutex1, NULL);
     if(err)
@@ -36,9 +39,9 @@ void *function_1(void *arg)
     if(err)
         fail("pthread_mutex_lock(4)");
 
-    usleep(100);
+    sync_process_step(arg);
 
-    for (;;) {
+    for (i = 0; i < loop; i++) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
@@ -93,14 +96,13 @@ void *function_1(void *arg)
             sum += dt;
         }
 
-        printf("Result|task 1: samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
-                        samples,
-                        (double)min / 1000,
-                        (double)sum / (samples * 1000),
-                        (double)max / 1000);
+        print_result(i, samples, min, max, sum);
+
+#if 0
         dog++;
         if (dog%10 == 0)
             sleep(1);
+#endif
     }
 
     return (arg);
@@ -108,15 +110,17 @@ void *function_1(void *arg)
 
 void *function_2(void *arg)
 {
-    int dog = 0, err;
+//    int dog = 0;
+    int err, i;
+    int loop = SAMPLES_LOOP;
 
     err = pthread_mutex_lock(&mutex1);
     if(err)
         fail("pthread_mutex_lock(1)");
 
-    usleep(100);
+    sync_process_step(arg);
 
-    for (;;) {
+    for (i = 0; i < loop; i++) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
@@ -170,14 +174,12 @@ void *function_2(void *arg)
             sum += dt;
         }
 
-        printf("Result|task 2: samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
-                        samples,
-                        (double)min / 1000,
-                        (double)sum / (samples * 1000),
-                        (double)max / 1000);
+        print_result(i, samples, min, max, sum);
+#if 0
         dog++;
         if (dog%10 == 0)
             sleep(1);
+#endif
     }
 
     return (arg);
@@ -185,31 +187,30 @@ void *function_2(void *arg)
 
 int main(int argc, char *const *argv)
 {
-    int err, cpu = 0;
-    pthread_t task;
+    int err, cpu = 0, first;
+    pthread_t task1;
+    pthread_t task2;
     pthread_attr_t tattr;
 
     init_main_thread();
 
-    printf("== Real Time Test \n"
-           "== Test name: %s \n"
-           "== All results in microseconds\n",
-           test_name);
+    print_header(test_name);
 
     //set task sched attr
     setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO), cpu);
 
-    err = pthread_create(&task, &tattr, function_1, NULL);
+    err = pthread_create(&task1, &tattr, function_1, &first);
     if (err)
         fail("pthread_create()");
 
-    err = pthread_create(&task, &tattr, function_2, NULL);
+    err = pthread_create(&task2, &tattr, function_2, NULL);
     if (err)
         fail("pthread_create()");
 
     pthread_attr_destroy(&tattr);
 
-    pthread_join(task, NULL);
+    pthread_join(task1, NULL);
+    pthread_join(task2, NULL);
 
     return 0;
 }
