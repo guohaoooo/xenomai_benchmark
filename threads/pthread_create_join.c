@@ -7,6 +7,7 @@
 #include "../util.h"
 
 #define SAMPLES_NUM  100000
+#define SAMPLES_LOOP 100
 
 char test_name[32] = "pthread_create_join";
 
@@ -14,22 +15,18 @@ void *emptyfunction(void *arg) {return (arg);}
 
 int main(int argc, char *const *argv)
 {
-    int err, cpu = 0;
+    int err, cpu = 0, i, loop = SAMPLES_LOOP;
 
     init_main_thread();
 
-    printf("== Real Time Test \n"
-           "== Test name: %s \n"
-           "== All results in microseconds\n",
-           test_name);
-
+    print_header(test_name);
 
     pthread_t task;
     pthread_attr_t tattr;
     //set task sched attr
     setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO), cpu);
 
-    for (;;) {
+    for (i = 0; i < loop; i++) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
@@ -59,11 +56,7 @@ int main(int argc, char *const *argv)
             sum += dt;
         }
 
-        printf("Result|samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
-                        samples,
-                        (double)min / 1000,
-                        (double)sum / (samples * 1000),
-                        (double)max / 1000);
+        print_result(i, samples, min, max, sum);
 
     }
 

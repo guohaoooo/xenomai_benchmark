@@ -7,6 +7,7 @@
 #include "../util.h"
 
 #define SAMPLES_NUM  100000
+#define SAMPLES_LOOP 100
 
 #ifndef PTHREAD_STACK_MIN
 #define PTHREAD_STACK_MIN 16384
@@ -20,14 +21,11 @@ void *emptyfunction(void *arg) {return (arg);}
 
 int main(int argc, char *const *argv)
 {
-    int err, cpu = 0;
+    int err, cpu = 0, i, loop = SAMPLES_LOOP;
 
     init_main_thread();
 
-    printf("== Real Time Test \n"
-           "== Test name: %s \n"
-           "== All results in microseconds\n",
-           test_name);
+    print_header(test_name);
 
     pthread_t task;
     pthread_attr_t tattr;
@@ -39,7 +37,7 @@ int main(int argc, char *const *argv)
     if (err)
          fail("pthread_attr_setstack()");
 
-    for (;;) {
+    for (i = 0; i < loop; i++) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
@@ -69,12 +67,7 @@ int main(int argc, char *const *argv)
             sum += dt;
         }
 
-        printf("Result|samples:%11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
-                        samples,
-                        (double)min / 1000,
-                        (double)sum / (samples * 1000),
-                        (double)max / 1000);
-
+        print_result(i, samples, min, max, sum);
     }
 
     return 0;
