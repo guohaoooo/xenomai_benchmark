@@ -25,7 +25,7 @@ void *function(void *arg)
     sigemptyset(&sa.sa_mask);
     sa.sa_sigaction = emptyhandler;
     sa.sa_flags = SA_SIGINFO;
-    sigaction(SIGUSR1, &sa, NULL);
+    sigaction(SIGRTMIN+1, &sa, NULL);
 
     for (i = 0; i < loop; i++) {
 
@@ -38,7 +38,7 @@ void *function(void *arg)
 
             clock_gettime(CLOCK_MONOTONIC, &start);
 
-            pthread_kill(thread, SIGUSR1);
+            pthread_kill(thread, SIGRTMIN+1);
 
             clock_gettime(CLOCK_MONOTONIC, &end);
 

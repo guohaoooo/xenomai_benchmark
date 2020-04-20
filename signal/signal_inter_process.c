@@ -4,12 +4,13 @@
 #include <pthread.h>
 #include <signal.h>
 #include <sys/syscall.h>
-#include "../util.h"
 #ifndef __XENO__
 #include <stdint.h>
 #endif
+#include "../util.h"
 
 #define SAMPLES_NUM  100000
+#define SAMPLES_LOOP 100
 
 char test_name[32] = "signal_inter_process";
 
@@ -23,12 +24,15 @@ void *function(void *arg)
     sigfillset(&sa.sa_mask);
     sa.sa_sigaction = emptyhandler;
     sa.sa_flags = SA_SIGINFO;
-    sigaction(SIGUSR1, &sa, NULL);
+    sigaction(SIGRTMIN+1, &sa, NULL);
     sigfillset(&mask);
 
-    int dog = 0;
+//    int dog = 0;
+    int i, loop = SAMPLES_LOOP;
 
-    for (;;) {
+//    sync_process_step(arg);
+
+    for (i = 0; i < loop; i++) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
@@ -54,16 +58,13 @@ void *function(void *arg)
             sum += dt;
         }
 
-        printf("Result|samples:task_1 %11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
-                        samples,
-                        (double)min / 1000,
-                        (double)sum / (samples * 1000),
-                        (double)max / 1000);
+        print_result(i, samples, min, max, sum);
 
+#if 0
         dog++;
         if(dog%10 == 0)
             sleep(1);
-
+#endif
     }
 
     return (arg);
@@ -71,10 +72,14 @@ void *function(void *arg)
 
 void *function_kill(void *arg)
 {
-    int dog = 0;
+//    int dog = 0;
     pid_t pid = *(pid_t *)arg;
+    int i, loop = SAMPLES_LOOP;
 
-    for (;;) {
+//    arg = NULL;
+//    sync_process_step(arg);
+
+    for (i = 0; i < loop; i++) {
 
         int32_t dt, max = -TEN_MILLIONS, min = TEN_MILLIONS;
         int64_t sum;
@@ -85,7 +90,7 @@ void *function_kill(void *arg)
 
             clock_gettime(CLOCK_MONOTONIC, &start);
 
-            kill(pid, SIGUSR1);
+            kill(pid, SIGRTMIN+1);
 
             clock_gettime(CLOCK_MONOTONIC, &end);
 
@@ -100,16 +105,12 @@ void *function_kill(void *arg)
             sum += dt;
         }
 
-        printf("Result|samples:task_2 %11d|min:%11.3f|avg:%11.3f|max:%11.3f\n",
-                        samples,
-                        (double)min / 1000,
-                        (double)sum / (samples * 1000),
-                        (double)max / 1000);
-
+        print_result(i, samples, min, max, sum);
+#if 0
         dog++;
         if(dog%10 == 0)
             sleep(1);
-
+#endif
     }
 
     return (arg);
@@ -118,7 +119,7 @@ void *function_kill(void *arg)
 
 int main(int argc, char *const *argv)
 {
-    int err, cpu = 0;
+    int err, cpu = 0, first;
     pthread_attr_t tattr;
     pthread_t task1;
     pthread_t task2;
@@ -126,14 +127,12 @@ int main(int argc, char *const *argv)
 
     init_main_thread();
 
-    printf("== Real Time Test \n"
-           "== Test name: %s pid: %d\n"
-           "== All results in microseconds\n",
-           test_name, getpid());
+    print_header(test_name);
+    printf("===pid: %d\n", getpid());
 
     if (argc == 1) {
         setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO), cpu);
-        err = pthread_create(&task1, &tattr, function, NULL);
+        err = pthread_create(&task1, &tattr, function, &first);
         if (err)
             fail("pthread_create()");
 
