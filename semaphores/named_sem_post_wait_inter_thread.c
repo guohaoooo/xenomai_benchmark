@@ -9,11 +9,11 @@
 #include <stdint.h>
 #endif
 
-#define SAMPLES_NUM   100000
+#define SAMPLES_NUM   10000
 #define SAMPLES_LOOP  100
 #define SEM_NAME "/named_sem"
 
-char test_name[32] = "named_sem_post_wait_inter_thread";
+char test_name[64] = "named_sem_post_wait_inter_thread";
 
 void *function_1(void *arg)
 {

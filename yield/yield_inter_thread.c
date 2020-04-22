@@ -6,7 +6,7 @@
 #endif
 #include "../util.h"
 
-#define SAMPLES_NUM  100000
+#define SAMPLES_NUM  10000
 #define SAMPLES_LOOP 100
 
 char test_name[32] = "sched_yield_inter_thread";

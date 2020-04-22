@@ -10,7 +10,7 @@
 #endif
 #include "../util.h"
 
-#define SAMPLES_NUM   100000
+#define SAMPLES_NUM   10000
 #define SAMPLES_LOOP  100
 #define SEM_NAME "/named_sem"
 
@@ -136,7 +136,7 @@ int main(int argc, char *const *argv)
         //set task sched attr
         setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO), cpu);
 
-        err = pthread_create(&task1, &tattr, function_1, &first);
+        err = pthread_create(&task1, &tattr, function_1, NULL);
         if (err)
             fail("pthread_create()");
 
@@ -144,7 +144,7 @@ int main(int argc, char *const *argv)
     } else {
 
         setup_sched_parameters(&tattr, sched_get_priority_max(SCHED_FIFO) - 1, cpu);
-        err = pthread_create(&task2, &tattr, function_2, NULL);
+        err = pthread_create(&task2, &tattr, function_2, &first);
         if (err)
             fail("pthread_create()");
 
