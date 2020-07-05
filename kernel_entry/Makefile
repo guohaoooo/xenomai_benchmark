@@ -12,7 +12,8 @@ CC := gcc
 endif
 
 EXCUTABLE := get_program_name \
-	     get_pid
+	     get_pid \
+	     clock_gettime
 
 all: $(EXCUTABLE)
 
